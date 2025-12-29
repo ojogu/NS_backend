@@ -1,0 +1,173 @@
+To write the pseudo-code, we need to think like a "Generator." The database holds the **rules**, but the code produces the **reality**.
+
+Here is the logic for the three main actions: **Fetching (Querying)**, **Canceling**, and **Rescheduling**.
+
+---
+
+### 1. Querying (The "Expansion" Logic)
+
+This is how you turn an RRULE into a list of events for a user's calendar.
+
+```python
+FUNCTION get_timetable(user_id, view_start_date, view_end_date):
+    # 1. Get all patterns that might fall in this range
+    patterns = DB.query("SELECT * FROM schedules WHERE start_date <= view_end_date AND end_date >= view_start_date")
+    
+    final_list = []
+
+    FOR each pattern IN patterns:
+        # 2. Use a library to turn the RRULE string into actual dates
+        # e.g., "Every Tuesday" -> [2025-10-07, 2025-10-14, 2025-10-21]
+        potential_dates = RRULE_Library.expand(pattern.rrule, view_start_date, view_end_date)
+
+        FOR each date IN potential_dates:
+            # 3. Check the "Blacklist" (Exceptions)
+            exception = DB.query("SELECT * FROM schedule_exceptions WHERE schedule_id = pattern.id AND exception_date = date")
+
+            IF exception exists:
+                IF exception.type == "CANCELLED":
+                    CONTINUE  # Skip this date, don't add to list
+                ELSE IF exception.type == "RESCHEDULED":
+                    # Add the modified version instead
+                    final_list.add({
+                        title: pattern.course_title,
+                        start: exception.new_start_time,
+                        venue: exception.new_venue
+                    })
+            ELSE:
+                # 4. No exception? Add the standard pattern date
+                final_list.add({
+                    title: pattern.course_title,
+                    start: date + pattern.start_time,
+                    venue: pattern.venue_name
+                })
+
+    RETURN final_list
+
+```
+
+---
+
+### 2. Canceling (Adding an Exception)
+
+When you cancel *one* occurrence, you don't touch the `schedules` table. You just "mark" that specific date.
+
+```python
+FUNCTION cancel_occurrence(schedule_id, target_date):
+    # Simply record that this specific day is a "No-Go"
+    DB.insert INTO schedule_exceptions (
+        schedule_id = schedule_id,
+        exception_date = target_date,
+        type = "CANCELLED"
+    )
+    RETURN "Instance on " + target_date + " cancelled successfully."
+
+```
+
+---
+
+### 3. Rescheduling (The "Move" Logic) (also handle collisions)
+
+Rescheduling is just a "Cancellation" with extra info. You tell the system: "Don't show the regular pattern on this day; show this custom info instead."
+
+```python
+FUNCTION reschedule_occurrence(schedule_id, target_date, new_time, new_venue_id):
+    # Add an entry that overrides the default pattern for one day only
+    DB.insert INTO schedule_exceptions (
+        schedule_id = schedule_id,
+        exception_date = target_date,
+        type = "RESCHEDULED",
+        new_start_time = new_time,
+        new_venue_id = new_venue_id
+    )
+    RETURN "Instance moved to " + new_time
+
+```
+
+---
+
+### Why this is powerful for your article:
+
+* **Querying:** Explain that the "filtering" happens at the end of the loop.
+* **Atomicity:** You are never deleting the "History" or the "Future"—you are only adding "Notes" (exceptions) for specific points in time.
+* **Performance:** Even with 100 exceptions, checking a `HashSet` or a small DB table for one date is incredibly fast compared to updating 50 rows in a massive events table.
+
+
+When **creating** a new timetable entry, the logic shifts from "generating dates" to **"preventing collisions."** Because you are using RRULEs, you can't just check if one row exists; you have to check if the *entire future pattern* of the new course clashes with any *existing patterns* or their *exceptions*.
+
+Here is the pseudo-code for the **Conflict Detection** logic:
+
+---
+
+### The "Creation" Logic (Conflict Check)
+
+```python
+FUNCTION create_new_schedule(course_id, venue_id, start_time, duration, rrule_string, start_date, end_date):
+    
+    # 1. Expand the NEW pattern into a list of dates
+    new_dates = RRULE_Library.expand(rrule_string, start_date, end_date)
+    
+    # 2. Find all EXISTING patterns in that same venue
+    existing_patterns = DB.query("SELECT * FROM schedules WHERE venue_id = venue_id")
+
+    FOR each date IN new_dates:
+        # Calculate start and end for the new event instance
+        new_instance_start = date + start_time
+        new_instance_end = new_instance_start + duration
+
+        FOR each pattern IN existing_patterns:
+            # Expand the existing pattern to see if it lands on THIS specific date
+            existing_instances = RRULE_Library.expand(pattern.rrule, date, date)
+            
+            FOR each existing_inst IN existing_instances:
+                # Check for "Global" Exceptions (Is the existing one cancelled today?)
+                exception = DB.query("SELECT * FROM schedule_exceptions WHERE schedule_id = pattern.id AND exception_date = date")
+                
+                IF exception.type == "CANCELLED":
+                    CONTINUE # No conflict if the original class isn't happening
+
+                # Use the Overlap Formula: (StartA < EndB) AND (EndA > StartB)
+                IF (new_instance_start < existing_inst.end) AND (new_instance_end > existing_inst.start):
+                    RETURN ERROR "Conflict detected on " + date + " with " + pattern.course_title
+
+    # 3. If no conflicts found, save the pattern
+    DB.insert INTO schedules (course_id, venue_id, start_time, duration, rrule, start_date, end_date)
+    RETURN "Schedule created successfully!"
+
+```
+
+---
+
+### Key Concepts for your Article
+
+#### 1. The "N+1" Problem Warning
+
+In your article, you should mention that running a DB query inside a loop (like the pseudo-code above) is slow.
+
+* **The Pro Tip:** Fetch all existing schedules for that venue in **one** query first, then do the "Expansion" and "Conflict Check" entirely in the backend memory. It’s much faster than hitting the database for every single date.
+
+#### 2. Virtual "Shadow" Instances
+
+Explain that when we check for conflicts, we are comparing a **Real Request** against **Virtual Instances**. The instances don't exist in the DB, but our code "projects" them into the future to see if they bump into each other.
+
+#### 3. Handling "Hard" vs "Soft" Conflicts
+
+* **Hard Conflict:** Same Venue, Same Time. (Impossible)
+* **Soft Conflict:** Same Teacher, Different Venues. (Possible, but usually a mistake).
+Your creation logic should ideally check for both:
+
+1. Is the **Venue** busy?
+2. Is the **Teacher** busy?
+
+---
+
+### Summary Table for your Article
+
+| Action | Logic Type | What it touches |
+| --- | --- | --- |
+| **Create** | Validation / Projection | Check new RRULE against existing RRULEs. |
+| **Query** | Expansion / Filtering | Turn RRULE into Dates + subtract Exceptions. |
+| **Cancel** | Appending | Add a row to the Exceptions table. |
+| **Reschedule** | Overriding | Add a row to Exceptions with "New Time/Venue" data. |
+
+**Since you're writing an article, would you like me to help you come up with a catchy title and a few "Key Takeaway" bullet points to wrap it up?**
