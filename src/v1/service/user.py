@@ -32,7 +32,7 @@ class UserService:
         self.lecturer = LecturerService(self.db, self.course, self)
         self.student = StudentService(self.db)
 
-    async def create_user(self, user_data: CreateUser | CreateStudent):
+    async def create_user(self, user_data: CreateUser | CreateStudent ):
         try:
             # user_data = CreateUser(user_data)
             logger.info(

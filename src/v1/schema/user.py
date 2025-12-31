@@ -59,3 +59,5 @@ UserResponseList = List[UserResponse]
 class UserCourse(BaseModel):
     user_id: Optional[uuid.UUID] = Field(default=None)
     course_id: uuid.UUID
+    
+

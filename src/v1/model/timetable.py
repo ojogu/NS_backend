@@ -46,7 +46,7 @@ class ScheduleException(BaseModel):
     exception_date: Mapped[datetime] = mapped_column(SQLdatetime(timezone=True), nullable=False)
     is_cancelled: Mapped[bool] = mapped_column(Boolean)
     is_reschedule: Mapped[bool] = mapped_column(Boolean)
-    new_venue_id = Mapped[uuid.UUID] = mapped_column(ForeignKey("venue.id"))
+    new_venue_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("venues.id"))
     
     #relationships
     schedule: Mapped["Schedule"] = relationship("Schedule", backref=backref("schedule_exception"))

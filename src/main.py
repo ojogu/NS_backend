@@ -8,6 +8,7 @@ from src.util.exception import register_error_handlers
 from src.v1.controllers.user import user_router
 from src.v1.controllers.courses import courses_router
 from src.v1.auth.routes import auth_router
+from src.v1.admin.routes import admin_router
 @asynccontextmanager
 async def life_span(app: FastAPI):
     """
@@ -63,7 +64,7 @@ register_error_handlers(app)
 app.include_router(auth_router, prefix=Settings.API_PREFIX)
 app.include_router(user_router, prefix=Settings.API_PREFIX)
 app.include_router(courses_router, prefix=Settings.API_PREFIX)
-# app.include_router(admin_router, prefix=Settings.API_PREFIX)
+app.include_router(admin_router, prefix=Settings.API_PREFIX)
 
 
 

@@ -29,6 +29,7 @@ async def lecturer_register(
         status_code=status.HTTP_201_CREATED,
         data=validated_data,
     )
+    
 
 
 @auth_router.post("/student-register")
@@ -88,8 +89,7 @@ async def get_new_access_token(token_details: dict = Depends(RefreshTokenBearer(
 
 @auth_router.get("/me")
 async def current_user(
-    user=Depends(get_current_user), role=Depends(RoleCheck([Role_Enum.LECTURER]))
-):
+    user=Depends(get_current_user)):
     validated_data = UserResponse.model_validate(user).model_dump()
     return success_response(
         message="User Fetched Successfully",

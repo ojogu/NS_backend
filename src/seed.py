@@ -1,7 +1,7 @@
 import asyncio
 from src.util.db import engine, Base, async_session
 from src.v1.model.user import Level, Level_Enum
-from v1.model.timetable import Department
+from src.v1.model.timetable import Department
 
 async def seed_data():
     async with engine.begin() as conn:

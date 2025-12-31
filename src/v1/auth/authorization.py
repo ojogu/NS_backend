@@ -24,7 +24,7 @@ class RoleCheck():
             logger.warning(f"Access denied for user {current_user.id}: required roles {self.required_roles}, user roles {current_user.role}")
             raise AuthorizationError()
     
-# In your has_access method:
+
     def has_access(self, required_roles, user_role):
         # Ensure a single string role is treated as a list containing that role
         if isinstance(user_role, str):

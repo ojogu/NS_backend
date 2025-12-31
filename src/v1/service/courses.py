@@ -1,6 +1,6 @@
 import uuid
 
-from sqlalchemy import select
+from sqlalchemy import select, or_
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -225,6 +225,50 @@ class CourseService:
         self.level = LevelService(self.db)
         self.dept = DeptService(self.db)
 
+    async def check_if_course_exists(self, name:str, code:str):
+        try:
+            stmt = select(Course).options(
+                selectinload(Course.department), selectinload(Course.level)
+            ).where(
+                or_(
+                    Course.code.ilike(code),
+                    Course.name.ilike(name)
+                )
+            )
+            existing_course = (await self.db.execute(stmt)).scalar_one_or_none()
+            return existing_course
+        except SQLAlchemyError as e:
+            logger.error(
+                f"Database error while checking course existence: {e}"
+            )
+            raise ServerError()
+
+    async def check_if_course_exists_by_id(self, course_id: uuid.UUID):
+        try:
+            stmt = await self.db.execute(
+                select(Course)
+                .options(selectinload(Course.department), selectinload(Course.level))
+                .where(Course.id == course_id)
+            )
+            course = stmt.scalar_one_or_none()
+            if course:
+                logger.info(
+                    f"Course {course.name} ({course.code}) found with ID {course_id}."
+                )
+            else:
+                logger.info(f"Course with ID {course_id} not found.")
+            return course
+        except SQLAlchemyError as e:
+            logger.error(
+                f"Database error while checking course existence by ID {course_id}: {e}"
+            )
+            raise ServerError()
+        except Exception as e:
+            logger.error(
+                f"An unexpected error occurred while checking course existence by ID {course_id}: {e}"
+            )
+            raise ServerError()
+
     async def create_course(self, course_data: CreateCourse):
         try:
             logger.info(
@@ -232,60 +276,26 @@ class CourseService:
             )
             # ideally, only admin can create course (later update)
 
-            # check if dept and level exist
-            dept = await self.dept.check_if_dept_exist_by_id(course_data.department_id)
-            if not dept:
-                raise NotFoundError(f"{course_data.department_id} does not exist")
-
-            level = await self.level.check_if_level_exist_by_id(course_data.level_id)
-            if not level:
-                raise NotFoundError(f"{course_data.level_id} does not exist")
-
-            # check if the course exist in  dept and level
-            course_exist_by_code_dept = (
-                await self.dept.check_if_course_exist_for_a_dept_by_course_code(
-                    course_data.department_id, course_data.code
-                )
-            )
-            course_exist_by_code_level = (
-                await self.level.check_if_course_exist_for_a_level_by_course_code(
-                    course_data.level_id, course_data.code
-                )
-            )
-            course_exist_by_name_dept = (
-                await self.dept.check_if_course_exist_for_a_dept_by_course_name(
-                    course_data.department_id, course_data.name
-                )
-            )
-            course_exist_by_name_level = (
-                await self.level.check_if_course_exist_for_a_level_by_course_name(
-                    course_data.level_id, course_data.name
-                )
-            )
-
-            course_exist = (
-                course_exist_by_code_dept and course_exist_by_code_level
-            ) or (course_exist_by_name_dept and course_exist_by_name_level)
-
-            if course_exist:
+            existing_course = await self.check_if_course_exists(course_data)
+            if existing_course:
                 logger.warning(
-                    f"Course creation failed: Course with name '{course_data.name}' or code '{course_data.code}' already exists for department {course_data.department_id} and level {course_data.level_id}."
+                    f"Course creation failed: Course with name '{course_data.name}' or code '{course_data.code}' already exists."
                 )
                 raise AlreadyExistsError(
-                    f"{course_exist.name} already exist for {course_exist.department.name}"
+                    f"Course with code '{course_data.code}' or name '{course_data.name}' already exists"
                 )
 
             new_course = Course(
                 name=course_data.name,
                 code=course_data.code,
-                department=dept,
-                level=level,
+                department_id=course_data.department_id,
+                level_id=course_data.level_id,
             )
             self.db.add(new_course)
             await self.db.commit()
             await self.db.refresh(new_course)
             logger.info(
-                f"Successfully created course '{new_course.name}' with code '{new_course.code}' for department {new_course.department.name} and level {new_course.level.name}."
+                f"Successfully created course '{new_course.name}' with code '{new_course.code}' for department {course_data.department_id} and level {course_data.level_id}."
             )
             return new_course
         except SQLAlchemyError as e:

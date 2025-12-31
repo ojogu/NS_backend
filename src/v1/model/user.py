@@ -22,6 +22,7 @@ user_course_association = Table('user_course', BaseModel.metadata,
 class Role_Enum(StrEnum):
     STUDENT = "student"
     LECTURER = "lecturer"
+    ADMIN = "admin"
     
 class Level_Enum(IntEnum):
     LEVEL_100 = 100
@@ -32,11 +33,11 @@ class Level_Enum(IntEnum):
 
 
 class User(BaseModel):
-    email: Mapped[Optional[str]] = mapped_column(String, unique=True, nullable=True, index=True)
-    first_name: Mapped[str] = mapped_column(String, nullable=False)
-    last_name: Mapped[str] = mapped_column(String, nullable=False) 
+    email: Mapped[str] = mapped_column(String, unique=True, nullable=True, index=True)
+    first_name: Mapped[str] = mapped_column(String, nullable=True)
+    last_name: Mapped[str] = mapped_column(String, nullable=True) 
     password: Mapped[str] = mapped_column(String, nullable=False) 
-    school_id: Mapped[str] = mapped_column(String, nullable=False, unique=True, index=True) 
+    school_id: Mapped[str] = mapped_column(String, nullable=True, unique=True, index=True) 
     # is_verified: Mapped[bool] = mapped_column(Boolean, default=False) #email verification, set to true
     role: Mapped[Role_Enum] = mapped_column(
         SqlEnum(Role_Enum, name="role_enum"),  nullable=False)
