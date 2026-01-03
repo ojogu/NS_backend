@@ -276,7 +276,7 @@ class CourseService:
             )
             # ideally, only admin can create course (later update)
 
-            existing_course = await self.check_if_course_exists(course_data)
+            existing_course = await self.check_if_course_exists(course_data.name, course_data.code)
             if existing_course:
                 logger.warning(
                     f"Course creation failed: Course with name '{course_data.name}' or code '{course_data.code}' already exists."
@@ -294,10 +294,25 @@ class CourseService:
             self.db.add(new_course)
             await self.db.commit()
             await self.db.refresh(new_course)
+
+            logger.info(f"course data: {new_course.to_dict()}")
+
             logger.info(
                 f"Successfully created course '{new_course.name}' with code '{new_course.code}' for department {course_data.department_id} and level {course_data.level_id}."
             )
+            #Article on handling relationships during writes. 
             return new_course
+            # course_dict = new_course.to_dict()
+            # logger.info(f'new course data:{new_course.to_dict()} ')
+            # logger.info(f'department data:{new_course.department.to_dict()} ')
+            # logger.info(f'level data:{new_course.level.to_dict()} ')
+            # if new_course.department:
+            #     course_dict['department'] = new_course.department.to_dict()
+            # if new_course.level:
+            #     course_dict['level'] = new_course.level.to_dict()
+            # logger.info(f"course dict: {course_dict}")
+            # return course_dict
+        
         except SQLAlchemyError as e:
             logger.error(
                 f"Database error while creating course with name '{course_data.name}' and code '{course_data.code}': {e}"

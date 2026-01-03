@@ -12,7 +12,7 @@ from src.v1.base.exception import (
     NotFoundError,
     ServerError,
 )
-from src.v1.model import Role_Enum, Schedule, ScheduleException, User, Venue
+from src.v1.model import Role_Enum, TimeTable, TimeTableException, User, Venue
 from src.v1.service.courses import CourseService
 
 from .schema import Admin, CreateTimeTable, CreateVenue
@@ -81,14 +81,35 @@ class AdminService:
             )
             raise ServerError()
 
-    async def check_if_venue_exist_by_id(self, venue_data: CreateVenue):
+    async def check_if_venue_exist_by_id(self, venue_id):
         try:
-            stmt = await self.db.execute(select(Venue).where(Venue.id == venue_data.id))
+            stmt = await self.db.execute(select(Venue).where(Venue.id == venue_id))
             return stmt.scalar_one_or_none()
         except SQLAlchemyError as e:
             logger.error(
-                f"Database error while checking venue existence by id '{venue_data.id}': {e}"
+                f"Database error while checking venue existence by id '{venue_id}': {e}"
             )
+            raise ServerError()
+
+    async def fetch_venue_by_id(self, venue_id):
+        try:
+            venue = await self.check_if_venue_exist_by_id(venue_id)
+            if not venue:
+                raise NotFoundError()
+            return venue
+        except SQLAlchemyError as e:
+            logger.error(f"Error while fetching venue data: {e}")
+            raise ServerError()
+
+    async def fetch_all_venues(self):
+        try:
+            stmt = await self.db.execute(select(Venue))
+            venue = stmt.scalars().all()
+            if not venue:
+                return []
+            return venue
+        except SQLAlchemyError as e:
+            logger.error(f"errors fetching venues: {e}")
             raise ServerError()
 
     async def create_venue(self, venue_data: CreateVenue):
@@ -98,7 +119,7 @@ class AdminService:
             )
 
             # Check if venue exists by name
-            existing_venue = await self.check_if_venue_exist_by_name(venue_data)
+            existing_venue = await self.check_if_venue_exist_by_name(venue_data.name)
             if existing_venue:
                 logger.warning(f"Venue with name '{venue_data.name}' already exists.")
                 raise AlreadyExistsError(
@@ -165,9 +186,9 @@ class AdminService:
                 )
             )
 
-            # Fetch existing schedules for the venue
+            # Fetch existing timetables for the venue
             existing_stmt = await self.db.execute(
-                select(Schedule).where(Schedule.venue_id == timetable_data.venue_id)
+                select(TimeTable).where(TimeTable.venue_id == timetable_data.venue_id)
             )
             existing_schedules = existing_stmt.scalars().all()
 
@@ -189,9 +210,9 @@ class AdminService:
                     for existing_date in existing_dates:
                         # Check for exceptions
                         exception_stmt = await self.db.execute(
-                            select(ScheduleException).where(
-                                ScheduleException.schedule_id == existing.id,
-                                ScheduleException.exception_date == existing_date,
+                            select(TimeTableException).where(
+                                TimeTableException.schedule_id == existing.id,
+                                TimeTableException.exception_date == existing_date,
                             )
                         )
                         exception = exception_stmt.scalar_one_or_none()
@@ -206,14 +227,14 @@ class AdminService:
                         # Check for time overlap
                         if (new_start < existing_end) and (new_end > existing_start):
                             logger.warning(
-                                f"Timetable creation failed: Conflict detected with existing schedule {existing.id} on {existing_date}."
+                                f"Timetable creation failed: Conflict detected with existing timetable {existing.id} on {existing_date}."
                             )
                             raise AlreadyExistsError(
-                                f"Schedule conflict with existing timetable on {existing_date.strftime('%Y-%m-%d')}."
+                                f"TimeTable conflict with existing timetable on {existing_date.strftime('%Y-%m-%d')}."
                             )
 
-            # No conflicts, create the new schedule
-            new_schedule = Schedule(
+            # No conflicts, create the new timetable
+            new_schedule = TimeTable(
                 course_id=timetable_data.course_id,
                 venue_id=timetable_data.venue_id,
                 start_time=timetable_data.start_time,

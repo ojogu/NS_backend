@@ -1,9 +1,10 @@
+import uuid
 from fastapi import Depends, APIRouter, status
 
 from src.v1.auth.authorization import RoleCheck
 from src.v1.model.user import Role_Enum
 from src.v1.schema.user import UserResponse
-from .schema import Admin, CreateVenue
+from .schema import Admin, CreateVenue, CreateTimeTable
 from src.v1.controllers.util import get_admin_service, get_current_user
 from .service import AdminService
 from src.util.response import success_response
@@ -20,6 +21,39 @@ role=Depends(RoleCheck([Role_Enum.ADMIN]))
         status_code=status.HTTP_201_CREATED,
         data = CreateVenue.model_validate(new_venue).model_dump()
     ) 
+    
+@admin_router.get("/venue")
+async def fetch_all_venue(admin_service:AdminService = Depends(get_admin_service),
+user=Depends(get_current_user),
+role=Depends(RoleCheck([Role_Enum.ADMIN, Role_Enum.LECTURER]))
+):
+    new_venue = await admin_service.fetch_all_venues()
+    return success_response(
+        status_code=status.HTTP_201_CREATED,
+        data = [CreateVenue.model_validate(venue).model_dump() for venue in new_venue]
+    )
+@admin_router.get("/venue/{venue_id}")
+async def fetch_one_venue(venue_id: uuid.UUID,
+admin_service:AdminService = Depends(get_admin_service),                        
+user=Depends(get_current_user),
+role=Depends(RoleCheck([Role_Enum.ADMIN, Role_Enum.LECTURER]))
+):
+    venue = await admin_service.fetch_venue_by_id(venue_id)
+    return success_response(
+        status_code=status.HTTP_201_CREATED,
+        data = CreateVenue.model_validate(venue).model_dump()
+    ) 
+    
+@admin_router.post("/timetable")
+async def create_timetable(data: CreateTimeTable, admin_service:AdminService = Depends(get_admin_service),
+user=Depends(get_current_user),
+role=Depends(RoleCheck([Role_Enum.ADMIN]))
+):
+    new_timetable = await admin_service.create_timetable(data)
+    return success_response(
+        status_code=status.HTTP_201_CREATED,
+        data = CreateTimeTable.model_validate(new_timetable).model_dump()
+    )
 
 
 @admin_router.post("/register")

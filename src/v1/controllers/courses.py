@@ -13,8 +13,10 @@ from src.v1.schema.courses import (
 )
 from src.v1.schema.user import UserCourse, UserResponse
 from src.v1.service.courses import CourseService, DeptService, LevelService
+from src.v1.auth.authorization import RoleCheck
+from src.v1.model.user import Role_Enum
 
-from .util import get_course_service, get_dept_service, get_level_service
+from .util import get_course_service, get_current_user, get_dept_service, get_level_service
 
 logger = setup_logger(__name__, "courses_route.log")
 
@@ -82,6 +84,9 @@ async def fetch_all_course_in_a_department(
 async def create_course(
     course_data: CreateCourse,
     course_service: CourseService = Depends(get_course_service),
+    user=Depends(get_current_user),
+    role=Depends(RoleCheck([Role_Enum.ADMIN, Role_Enum.LECTURER]))
+    
 ):
     new_course = await course_service.create_course(course_data)
     # return new_course.to_dict()

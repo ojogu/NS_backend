@@ -11,7 +11,7 @@ This is how you turn an RRULE into a list of events for a user's calendar.
 ```python
 FUNCTION get_timetable(user_id, view_start_date, view_end_date):
     # 1. Get all patterns that might fall in this range
-    patterns = DB.query("SELECT * FROM schedules WHERE start_date <= view_end_date AND end_date >= view_start_date")
+    patterns = DB.query("SELECT * FROM timetables WHERE start_date <= view_end_date AND end_date >= view_start_date")
     
     final_list = []
 
@@ -50,7 +50,7 @@ FUNCTION get_timetable(user_id, view_start_date, view_end_date):
 
 ### 2. Canceling (Adding an Exception)
 
-When you cancel *one* occurrence, you don't touch the `schedules` table. You just "mark" that specific date.
+When you cancel *one* occurrence, you don't touch the `timetables` table. You just "mark" that specific date.
 
 ```python
 FUNCTION cancel_occurrence(schedule_id, target_date):
@@ -108,7 +108,7 @@ FUNCTION create_new_schedule(course_id, venue_id, start_time, duration, rrule_st
     new_dates = RRULE_Library.expand(rrule_string, start_date, end_date)
     
     # 2. Find all EXISTING patterns in that same venue
-    existing_patterns = DB.query("SELECT * FROM schedules WHERE venue_id = venue_id")
+    existing_patterns = DB.query("SELECT * FROM timetables WHERE venue_id = venue_id")
 
     FOR each date IN new_dates:
         # Calculate start and end for the new event instance
@@ -131,8 +131,8 @@ FUNCTION create_new_schedule(course_id, venue_id, start_time, duration, rrule_st
                     RETURN ERROR "Conflict detected on " + date + " with " + pattern.course_title
 
     # 3. If no conflicts found, save the pattern
-    DB.insert INTO schedules (course_id, venue_id, start_time, duration, rrule, start_date, end_date)
-    RETURN "Schedule created successfully!"
+    DB.insert INTO timetables (course_id, venue_id, start_time, duration, rrule, start_date, end_date)
+    RETURN "TimeTable created successfully!"
 
 ```
 
@@ -144,7 +144,7 @@ FUNCTION create_new_schedule(course_id, venue_id, start_time, duration, rrule_st
 
 In your article, you should mention that running a DB query inside a loop (like the pseudo-code above) is slow.
 
-* **The Pro Tip:** Fetch all existing schedules for that venue in **one** query first, then do the "Expansion" and "Conflict Check" entirely in the backend memory. It’s much faster than hitting the database for every single date.
+* **The Pro Tip:** Fetch all existing timetables for that venue in **one** query first, then do the "Expansion" and "Conflict Check" entirely in the backend memory. It’s much faster than hitting the database for every single date.
 
 #### 2. Virtual "Shadow" Instances
 
