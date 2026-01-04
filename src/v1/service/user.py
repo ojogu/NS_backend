@@ -81,12 +81,10 @@ class UserService:
             )
 
             self.db.add(new_user)
-            await self.db.refresh(new_user)
             await self.db.commit()
+            await self.db.refresh(new_user)
             logger.info(f"User {new_user.id} created successfully.")
             return new_user
-        except AlreadyExistsError as e:
-            logger.error(f"Failed to create user: {e}")
         except SQLAlchemyError as e:
             logger.error(f"Error creating user: {e}")
             await self.db.rollback()
@@ -209,8 +207,83 @@ class UserService:
     async def link_lecturer_to_course(self, user_data):
         return await self.lecturer.link_lecturer_to_course(user_data)
 
-    async def update_user(self):
-        pass
+    async def update_user(self, user_id: uuid.UUID, user_data: CreateUser | CreateStudent):
+        try:
+            user = await self.check_if_user_exist_by_id(user_id)
+            if not user:
+                raise NotFoundError(f"User with ID {user_id} not found")
 
-    async def delete_user(self):
-        pass
+            # Check for email/school_id conflicts
+            existing_email = await self.check_if_user_exist_by_email(user_data.email)
+            if existing_email and existing_email.id != user_id:
+                raise AlreadyExistsError(f"Email {user_data.email} already exists")
+
+            existing_school_id = await self.check_if_user_exist_by_school_id(user_data.school_id)
+            if existing_school_id and existing_school_id.id != user_id:
+                raise AlreadyExistsError(f"School ID {user_data.school_id} already exists")
+
+            # Update fields
+            user.email = user_data.email
+            user.first_name = user_data.first_name
+            user.last_name = user_data.last_name
+            user.school_id = user_data.school_id
+            user.role = user_data.role
+
+            # Update department
+            stmt = await self.db.execute(
+                select(Department).where(Department.name.ilike(user_data.department))
+            )
+            dept = stmt.scalar_one_or_none()
+            if not dept:
+                raise NotFoundError(f"Department {user_data.department} not found")
+            user.department = dept
+
+            # Update level if student
+            if user_data.role == Role_Enum.STUDENT and hasattr(user_data, 'level') and user_data.level:
+                stmt = await self.db.execute(
+                    select(Level).where(Level.name == user_data.level)
+                )
+                level = stmt.scalar_one_or_none()
+                if not level:
+                    raise NotFoundError(f"Level {user_data.level} not found")
+                user.level = level
+
+            await self.db.commit()
+            await self.db.refresh(user)
+            logger.info(f"User {user_id} updated successfully.")
+            return user
+        except SQLAlchemyError as e:
+            logger.error(f"Database error while updating user {user_id}: {e}")
+            await self.db.rollback()
+            raise ServerError()
+
+    async def delete_user(self, user_id: uuid.UUID):
+        try:
+            user = await self.check_if_user_exist_by_id(user_id)
+            if not user:
+                raise NotFoundError(f"User with ID {user_id} not found")
+
+            await self.db.delete(user)
+            await self.db.commit()
+            logger.info(f"User {user_id} deleted successfully.")
+            return True
+        except SQLAlchemyError as e:
+            logger.error(f"Database error while deleting user {user_id}: {e}")
+            await self.db.rollback()
+            raise ServerError()
+
+    async def fetch_all_users(self):
+        try:
+            stmt = await self.db.execute(
+                select(User).options(
+                    selectinload(User.department),
+                    selectinload(User.level),
+                    selectinload(User.courses)
+                )
+            )
+            users = stmt.scalars().all()
+            logger.info(f"Successfully fetched {len(users)} users.")
+            return users
+        except SQLAlchemyError as e:
+            logger.error(f"Database error while fetching all users: {e}")
+            raise ServerError()

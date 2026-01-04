@@ -17,120 +17,6 @@ logger = setup_logger(__name__, "courses_service.log")
 # seed courses for 100l, lecturers register courses to teach, student register courses only based on their level and department
 
 
-class LevelService:
-    def __init__(self, db: AsyncSession):
-        self.db = db
-
-    async def fetch_all_level(self):
-        try:
-            stmt = await self.db.execute(select(Level))
-            all_levels = (
-                stmt.scalars().all()
-            )  # a list of Level objects: [Level(), Level(), ...]
-            # Use .all() (without .scalars()) to get a list of tuple rows, where each tuple contains the columns selected. Since you are selecting the entire Level entity, each tuple will contain a single Level object.
-            logger.info("Successfully fetched all levels.")
-            return all_levels
-        except SQLAlchemyError as e:
-            logger.error(f"Database error while fetching all levels: {e}")
-            raise ServerError()
-        except Exception as e:
-            logger.error(f"An unexpected error occurred while fetching all levels: {e}")
-            raise ServerError()
-
-    async def check_if_level_exist_by_id(self, level_id: uuid.UUID):
-        try:
-            stmt = await self.db.execute(select(Level).where(Level.id == level_id))
-            level = stmt.scalar_one_or_none()
-            if level:
-                logger.info(f"Level {level.name} found with ID {level_id}.")
-            else:
-                logger.info(f"Level with ID {level_id} not found.")
-            return level
-        except SQLAlchemyError as e:
-            logger.error(
-                f"Database error while checking level existence by ID {level_id}: {e}"
-            )
-            raise ServerError()
-        except Exception as e:
-            logger.error(
-                f"An unexpected error occurred while checking level existence by ID {level_id}: {e}"
-            )
-            raise ServerError()
-
-    async def fetch_all_courses_for_a_level(self):
-        try:
-            stmt = await self.db.execute(
-                select(Course).options(selectinload(Course.level))
-            )
-            courses = stmt.scalars().all()
-            logger.info(
-                f"Successfully fetched {len(courses)} courses with their levels."
-            )
-            return courses
-        except SQLAlchemyError as e:
-            logger.error(f"Database error while fetching all courses for levels: {e}")
-            raise ServerError()
-        except Exception as e:
-            logger.error(
-                f"An unexpected error occurred while fetching all courses for levels: {e}"
-            )
-            raise ServerError()
-
-    async def check_if_course_exist_for_a_level_by_course_code(
-        self, level_id: uuid.UUID, course_code: str
-    ):
-        try:
-            stmt = await self.db.execute(
-                select(Course)
-                .options(selectinload(Course.level))
-                .where(Course.level_id == level_id)
-                .where(Course.code.ilike(course_code))
-            )
-            course = stmt.scalar_one_or_none()
-            if course:
-                logger.info(
-                    f"Course {course.name}, {course.code} found for Level {course.level.name}."
-                )
-            else:
-                logger.info(f"Course {course_code} not found for level {level_id}.")
-            return course
-        except SQLAlchemyError as e:
-            logger.error(
-                f"Database error while checking course existence for level {level_id} by code {course_code}: {e}"
-            )
-            raise ServerError()
-        # except Exception as e:
-        #     logger.error(f"An unexpected error occurred while checking course existence for level {level_id} by code {course_code}: {e}")
-        #     raise ServerError()
-
-    async def check_if_course_exist_for_a_level_by_course_name(
-        self, level_id: uuid.UUID, course_name: str
-    ):
-        try:
-            stmt = await self.db.execute(
-                select(Course)
-                .options(selectinload(Course.level))
-                .where(Course.level_id == level_id)
-                .where(Course.name.ilike(course_name))
-            )
-            course = stmt.scalar_one_or_none()
-            if course:
-                logger.info(
-                    f"Course {course.name}, {course.code} found for Level {course.level.name}."
-                )
-            else:
-                logger.info(f"Course {course_name} not found for level {level_id}.")
-            return course
-        except SQLAlchemyError as e:
-            logger.error(
-                f"Database error while checking course existence for level {level_id} by name {course_name}: {e}"
-            )
-            raise ServerError()
-        # except Exception as e:
-        #     logger.error(f"An unexpected error occurred while checking course existence for level {level_id} by name {course_name}: {e}")
-        #     raise ServerError()
-
-
 class DeptService:
     def __init__(self, db: AsyncSession):
         self.db = db
@@ -149,8 +35,57 @@ class DeptService:
         department = stmt.scalars().all()
         return department
 
-    async def create_dept(self):
-        pass
+    async def create_dept(self, dept_name: str):
+        try:
+            existing_dept = await self.check_if_dept_exist_by_name(dept_name)
+            if existing_dept:
+                raise AlreadyExistsError(f"Department '{dept_name}' already exists")
+
+            new_dept = Department(name=dept_name)
+            self.db.add(new_dept)
+            await self.db.commit()
+            await self.db.refresh(new_dept)
+            logger.info(f"Department {dept_name} created successfully.")
+            return new_dept
+        except SQLAlchemyError as e:
+            logger.error(f"Database error while creating department {dept_name}: {e}")
+            await self.db.rollback()
+            raise ServerError()
+
+    async def update_dept(self, dept_id: uuid.UUID, dept_name: str):
+        try:
+            dept = await self.check_if_dept_exist_by_id(dept_id)
+            if not dept:
+                raise NotFoundError(f"Department with ID {dept_id} not found")
+
+            existing_dept = await self.check_if_dept_exist_by_name(dept_name)
+            if existing_dept and existing_dept.id != dept_id:
+                raise AlreadyExistsError(f"Department '{dept_name}' already exists")
+
+            dept.name = dept_name
+            await self.db.commit()
+            await self.db.refresh(dept)
+            logger.info(f"Department {dept_name} updated successfully.")
+            return dept
+        except SQLAlchemyError as e:
+            logger.error(f"Database error while updating department {dept_id}: {e}")
+            await self.db.rollback()
+            raise ServerError()
+
+    async def delete_dept(self, dept_id: uuid.UUID):
+        try:
+            dept = await self.check_if_dept_exist_by_id(dept_id)
+            if not dept:
+                raise NotFoundError(f"Department with ID {dept_id} not found")
+
+            await self.db.delete(dept)
+            await self.db.commit()
+            logger.info(f"Department {dept.name} deleted successfully.")
+            return True
+        except SQLAlchemyError as e:
+            logger.error(f"Database error while deleting department {dept_id}: {e}")
+            await self.db.rollback()
+            raise ServerError()
 
     async def check_if_dept_exist_by_name(self, dept_name: str):
         stmt = await self.db.execute(
@@ -222,7 +157,6 @@ class DeptService:
 class CourseService:
     def __init__(self, db: AsyncSession):
         self.db = db
-        self.level = LevelService(self.db)
         self.dept = DeptService(self.db)
 
     async def check_if_course_exists(self, name:str, code:str):
@@ -276,6 +210,17 @@ class CourseService:
             )
             # ideally, only admin can create course (later update)
 
+            # Check if department exists
+            dept_exists = await self.dept.check_if_dept_exist_by_id(course_data.department_id)
+            if not dept_exists:
+                raise NotFoundError(f"Department with ID {course_data.department_id} not found")
+
+            # Check if level exists
+            stmt = await self.db.execute(select(Level).where(Level.id == course_data.level_id))
+            level_exists = stmt.scalar_one_or_none()
+            if not level_exists:
+                raise NotFoundError(f"Level with ID {course_data.level_id} not found")
+
             existing_course = await self.check_if_course_exists(course_data.name, course_data.code)
             if existing_course:
                 logger.warning(
@@ -321,6 +266,71 @@ class CourseService:
         # except Exception as e:
         #     logger.error(f"An unexpected error occurred while creating course with name '{course_data.name}' and code '{course_data.code}': {e}")
         #     raise ServerError()
+
+    async def update_course(self, course_id: uuid.UUID, course_data: CreateCourse):
+        try:
+            course = await self.check_if_course_exists_by_id(course_id)
+            if not course:
+                raise NotFoundError(f"Course with ID {course_id} not found")
+
+            # Check if department exists
+            dept_exists = await self.dept.check_if_dept_exist_by_id(course_data.department_id)
+            if not dept_exists:
+                raise NotFoundError(f"Department with ID {course_data.department_id} not found")
+
+            # Check if level exists
+            stmt = await self.db.execute(select(Level).where(Level.id == course_data.level_id))
+            level_exists = stmt.scalar_one_or_none()
+            if not level_exists:
+                raise NotFoundError(f"Level with ID {course_data.level_id} not found")
+
+            # Check if another course exists with the same name or code
+            existing_course = await self.check_if_course_exists(course_data.name, course_data.code)
+            if existing_course and existing_course.id != course_id:
+                raise AlreadyExistsError(
+                    f"Course with code '{course_data.code}' or name '{course_data.name}' already exists"
+                )
+
+            course.name = course_data.name
+            course.code = course_data.code
+            course.department_id = course_data.department_id
+            course.level_id = course_data.level_id
+
+            await self.db.commit()
+            await self.db.refresh(course)
+            logger.info(f"Course {course.name} updated successfully.")
+            return course
+        except SQLAlchemyError as e:
+            logger.error(f"Database error while updating course {course_id}: {e}")
+            await self.db.rollback()
+            raise ServerError()
+
+    async def delete_course(self, course_id: uuid.UUID):
+        try:
+            course = await self.check_if_course_exists_by_id(course_id)
+            if not course:
+                raise NotFoundError(f"Course with ID {course_id} not found")
+
+            await self.db.delete(course)
+            await self.db.commit()
+            logger.info(f"Course {course.name} deleted successfully.")
+            return True
+        except SQLAlchemyError as e:
+            logger.error(f"Database error while deleting course {course_id}: {e}")
+            await self.db.rollback()
+            raise ServerError()
+
+    async def fetch_all_courses(self):
+        try:
+            stmt = await self.db.execute(
+                select(Course).options(selectinload(Course.department), selectinload(Course.level))
+            )
+            courses = stmt.scalars().all()
+            logger.info(f"Successfully fetched {len(courses)} courses.")
+            return courses
+        except SQLAlchemyError as e:
+            logger.error(f"Database error while fetching all courses: {e}")
+            raise ServerError()
 
     async def check_course_dept(self, course_id: uuid.UUID):
         try:

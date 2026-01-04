@@ -1,4 +1,4 @@
-from .timetable import Course, Department, TimeTable, TimeTableException, Venue
+from .timetable import Course, Department, TimeTable, TimeTableException, Venue, Semester
 from .user import Level, Level_Enum, Role_Enum, User
 
 __all__ = [
@@ -11,4 +11,5 @@ __all__ = [
     "TimeTableException",
     "TimeTable",
     "Venue",
+    "Semester",
 ]

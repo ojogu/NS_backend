@@ -4,7 +4,8 @@ from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.util.db import get_session
 from src.v1.auth.service import AccessTokenBearer
-from src.v1.service.courses import CourseService, DeptService, LevelService
+from src.v1.service.courses import CourseService, DeptService
+from src.v1.service.level_service import LevelService
 from src.v1.service.user import UserService
 from src.v1.admin.service import AdminService
 

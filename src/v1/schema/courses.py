@@ -15,7 +15,12 @@ class BaseResponse(BaseModel):
 
 class LevelResponse(BaseResponse):
     name: Level_Enum
-    
+
+    model_config = ConfigDict(from_attributes=True)
+
+class CreateLevel(BaseModel):
+    name: Level_Enum
+
     model_config = ConfigDict(from_attributes=True)
 
 class DeptResponse(BaseResponse):
@@ -41,4 +46,3 @@ class CourseResponse(BaseModel):
     level: LevelResponse
      
     model_config = ConfigDict(from_attributes=True)
-    

@@ -43,10 +43,10 @@ class User(BaseModel):
         SqlEnum(Role_Enum, name="role_enum"),  nullable=False)
     
     level_id: Mapped[Optional[uuid.UUID]] = mapped_column(ForeignKey("levels.id"), nullable=True)
-    level: Mapped[Optional["Level"]] = relationship("Level", uselist=False, backref=backref("user"))
+    level: Mapped[Optional["Level"]] = relationship("Level", uselist=False, backref=backref("user"), lazy="joined")
     
     department_id: Mapped[Optional[uuid.UUID]] = mapped_column(ForeignKey("departments.id"), nullable=True)
-    department: Mapped[Optional["Department"]] = relationship("Department", uselist=False, backref=backref("user")) # type: ignore  # noqa: F821
+    department: Mapped[Optional["Department"]] = relationship("Department", uselist=False, backref=backref("user"), lazy="joined") # type: ignore  # noqa: F821
     
     courses: Mapped[List["Course"]] = relationship("Course", secondary=user_course_association, backref=backref("user")) #   # noqa: F821
     

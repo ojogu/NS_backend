@@ -7,6 +7,7 @@ from src.util.config import Settings
 from src.util.exception import register_error_handlers
 from src.v1.controllers.user import user_router
 from src.v1.controllers.courses import courses_router
+from src.v1.controllers.level import level_router
 from src.v1.auth.routes import auth_router
 from src.v1.admin.routes import admin_router
 @asynccontextmanager
@@ -64,6 +65,7 @@ register_error_handlers(app)
 app.include_router(auth_router, prefix=Settings.API_PREFIX)
 app.include_router(user_router, prefix=Settings.API_PREFIX)
 app.include_router(courses_router, prefix=Settings.API_PREFIX)
+app.include_router(level_router, prefix=Settings.API_PREFIX)
 app.include_router(admin_router, prefix=Settings.API_PREFIX)
 
 
@@ -81,4 +83,3 @@ def root():
 # if __name__ == "__main__":
 #     import uvicorn
 #     uvicorn.run("main:app",  port=8000, reload=True, host="0.0.0.0")
-    

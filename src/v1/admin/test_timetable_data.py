@@ -1,6 +1,7 @@
 import uuid
-from datetime import datetime, date
+from datetime import datetime
 from src.v1.admin.schema import CreateTimeTable, RecurrenceSchema
+from src.v1.model.timetable import Semester_Enum
 
 # Sample test data for CreateTimeTable model
 
@@ -22,9 +23,9 @@ recurrence_sample = RecurrenceSchema(
     by_weekday=["MO", "WE"]  # Monday and Wednesday
 )
 
-# Sample semester dates
-semester_start_date_sample = date(2023, 9, 1)
-semester_end_date_sample = date(2023, 12, 31)
+# Sample semester session and name
+semester_session_sample = "2023/2024"
+semester_name_sample = Semester_Enum.FIRST_SEMESTER
 
 # Create instance with RecurrenceSchema
 timetable_with_recurrence = CreateTimeTable(
@@ -33,8 +34,8 @@ timetable_with_recurrence = CreateTimeTable(
     start_time=start_time_sample,
     duration_minutes=duration_minutes_sample,
     rrule=recurrence_sample,
-    semester_start_date=semester_start_date_sample,
-    semester_end_date=semester_end_date_sample
+    semester_session=semester_session_sample,
+    semester_name=semester_name_sample
 )
 
 # Sample rrule as string
@@ -47,8 +48,8 @@ timetable_with_string = CreateTimeTable(
     start_time=datetime(2023, 9, 2, 10, 0),  # September 2, 2023, 10:00 AM
     duration_minutes=90,  # 1.5 hours
     rrule=rrule_string_sample,
-    semester_start_date=date(2023, 9, 1),
-    semester_end_date=date(2023, 12, 31)
+    semester_session="2023/2024",
+    semester_name=Semester_Enum.SECOND_SEMESTER
 )
 
 # Print the model dumps for verification
@@ -70,8 +71,8 @@ sample_data_dicts = [
             "interval": 1,
             "by_weekday": ["MO", "WE"]
         },
-        "semester_start_date": "2023-09-01",
-        "semester_end_date": "2023-12-31"
+        "semester_session": "2023/2024",
+        "semester_name": "first_semester"
     },
     {
         "course_id": str(uuid.uuid4()),
@@ -79,8 +80,8 @@ sample_data_dicts = [
         "start_time": "2023-09-02T10:00:00",
         "duration_minutes": 90,
         "rrule": "FREQ=WEEKLY;INTERVAL=1;BYDAY=TU,TH",
-        "semester_start_date": "2023-09-01",
-        "semester_end_date": "2023-12-31"
+        "semester_session": "2023/2024",
+        "semester_name": "second_semester"
     }
 ]
 

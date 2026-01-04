@@ -12,11 +12,12 @@ from src.v1.schema.courses import (
     LevelResponse,
 )
 from src.v1.schema.user import UserCourse, UserResponse
-from src.v1.service.courses import CourseService, DeptService, LevelService
+from src.v1.service.courses import CourseService, DeptService
+from src.v1.service.level_service import LevelService
 from src.v1.auth.authorization import RoleCheck
 from src.v1.model.user import Role_Enum
 
-from .util import get_course_service, get_current_user, get_dept_service, get_level_service
+from .util import get_course_service, get_current_user, get_dept_service, get_level_service, get_admin_service
 
 logger = setup_logger(__name__, "courses_route.log")
 
@@ -141,3 +142,106 @@ async def fetch_all_lecturers_taking_course(
         # logger.info(level_value)
         user_list.append(user_value)
     return success_response(status_code=status.HTTP_200_OK, data=user_list)
+
+
+# CRUD for courses
+@courses_router.get("/course", tags=["Courses"])
+async def fetch_all_courses(course_service: CourseService = Depends(get_course_service),
+user=Depends(get_current_user),
+role=Depends(RoleCheck([Role_Enum.ADMIN, Role_Enum.LECTURER]))
+):
+    courses = await course_service.fetch_all_courses()
+    course_list = []
+    for course in courses:
+        course_value = CourseResponse.model_validate(course).model_dump(
+            exclude={
+                "level": {"created_at", "updated_at"},
+                "department": {"created_at", "updated_at"},
+            }
+        )
+        course_list.append(course_value)
+    return success_response(status_code=status.HTTP_200_OK, data=course_list)
+
+@courses_router.get("/course/{course_id}", tags=["Courses"])
+async def fetch_one_course(course_id: uuid.UUID,
+course_service: CourseService = Depends(get_course_service),
+user=Depends(get_current_user),
+role=Depends(RoleCheck([Role_Enum.ADMIN, Role_Enum.LECTURER]))
+):
+    course = await course_service.check_if_course_exists_by_id(course_id)
+    course_value = CourseResponse.model_validate(course).model_dump(
+        exclude={
+            "level": {"created_at", "updated_at"},
+            "department": {"created_at", "updated_at"},
+        }
+    )
+    return success_response(status_code=status.HTTP_200_OK, data=course_value)
+
+@courses_router.put("/course/{course_id}", tags=["Courses"])
+async def update_course(course_id: uuid.UUID, data: CreateCourse,
+course_service: CourseService = Depends(get_course_service),
+user=Depends(get_current_user),
+role=Depends(RoleCheck([Role_Enum.ADMIN]))
+):
+    updated_course = await course_service.update_course(course_id, data)
+    course_value = CourseResponse.model_validate(updated_course).model_dump(
+        exclude={
+            "level": {"created_at", "updated_at"},
+            "department": {"created_at", "updated_at"},
+        }
+    )
+    return success_response(status_code=status.HTTP_200_OK, data=course_value)
+
+@courses_router.delete("/course/{course_id}", tags=["Courses"])
+async def delete_course(course_id: uuid.UUID,
+course_service: CourseService = Depends(get_course_service),
+user=Depends(get_current_user),
+role=Depends(RoleCheck([Role_Enum.ADMIN]))
+):
+    await course_service.delete_course(course_id)
+    return success_response(
+        status_code=status.HTTP_204_NO_CONTENT,
+        message="Course deleted successfully"
+    )
+
+# CRUD for departments
+@courses_router.post("/department", tags=["Departments"])
+async def create_department(data: dict, dept_service: DeptService = Depends(get_dept_service),
+user=Depends(get_current_user),
+role=Depends(RoleCheck([Role_Enum.ADMIN]))
+):
+    new_dept = await dept_service.create_dept(data["name"])
+    dept_value = DeptResponse.model_validate(new_dept).model_dump()
+    return success_response(status_code=status.HTTP_201_CREATED, data=dept_value)
+
+@courses_router.get("/department/{dept_id}", tags=["Departments"])
+async def fetch_one_department(dept_id: uuid.UUID,
+dept_service: DeptService = Depends(get_dept_service),
+user=Depends(get_current_user),
+role=Depends(RoleCheck([Role_Enum.ADMIN, Role_Enum.LECTURER]))
+):
+    dept = await dept_service.check_if_dept_exist_by_id(dept_id)
+    dept_value = DeptResponse.model_validate(dept).model_dump()
+    return success_response(status_code=status.HTTP_200_OK, data=dept_value)
+
+@courses_router.put("/department/{dept_id}", tags=["Departments"])
+async def update_department(dept_id: uuid.UUID, data: dict,
+dept_service: DeptService = Depends(get_dept_service),
+user=Depends(get_current_user),
+role=Depends(RoleCheck([Role_Enum.ADMIN]))
+):
+    updated_dept = await dept_service.update_dept(dept_id, data["name"])
+    dept_value = DeptResponse.model_validate(updated_dept).model_dump()
+    return success_response(status_code=status.HTTP_200_OK, data=dept_value)
+
+@courses_router.delete("/department/{dept_id}", tags=["Departments"])
+async def delete_department(dept_id: uuid.UUID,
+dept_service: DeptService = Depends(get_dept_service),
+user=Depends(get_current_user),
+role=Depends(RoleCheck([Role_Enum.ADMIN]))
+):
+    await dept_service.delete_dept(dept_id)
+    return success_response(
+        status_code=status.HTTP_204_NO_CONTENT,
+        message="Department deleted successfully"
+    )

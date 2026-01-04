@@ -1,7 +1,8 @@
 import asyncio
+from datetime import date
 from src.util.db import engine, Base, async_session
 from src.v1.model.user import Level, Level_Enum
-from src.v1.model.timetable import Department
+from src.v1.model.timetable import Department, Semester, Semester_Enum
 
 async def seed_data():
     async with engine.begin() as conn:
@@ -18,7 +19,7 @@ async def seed_data():
         ]
         session.add_all(levels)
         await session.commit()
-
+        
         # Seed Departments
         departments = [
             Department(name="Computer Science"),
@@ -29,7 +30,25 @@ async def seed_data():
         session.add_all(departments)
         await session.commit()
 
-        print("Levels and Departments seeded successfully!")
+        # Seed Semesters
+        semesters = [
+            # Semester(
+            #     name=Semester_Enum.FIRST_SEMESTER,
+            #     school_session="2024/2025",
+            #     start_date=date(2024, 9, 1),
+            #     end_date=date(2024, 12, 31),
+            # ),
+            Semester(
+                name=Semester_Enum.SECOND_SEMESTER,
+                school_session="2025/2026",
+                start_date=date(2025, 9, 1),
+                end_date=date(2026, 4, 30),
+            ),
+        ]
+        session.add_all(semesters)
+        await session.commit()
+
+        print("Levels, Departments, and Semesters seeded successfully!")
 
 if __name__ == "__main__":
     asyncio.run(seed_data())

@@ -1,10 +1,11 @@
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 import uuid
-from datetime import datetime, date
+from datetime import datetime, date, time
 from typing import List, Optional, Union
 from dateutil.rrule import rrule, rrulestr, DAILY, WEEKLY, MONTHLY, YEARLY
 
 from src.v1.model.user import Role_Enum
+from src.v1.model.timetable import Semester_Enum
 
 class Admin(BaseModel):
     email:EmailStr
@@ -21,6 +22,21 @@ class CreateVenue(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
+class CreateDepartment(BaseModel):
+    name: str
+    id: Optional[uuid.UUID] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+class CreateSemester(BaseModel):
+    name: Semester_Enum
+    school_session: str
+    start_date: date
+    end_date: date
+    id: Optional[uuid.UUID] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
 
 
 # Mapping frontend strings to dateutil's integer constants
@@ -33,7 +49,7 @@ FREQ_MAP = {
 
 class RecurrenceSchema(BaseModel):
     # --- CORE FIELDS ---
-    dt_start: datetime      # The anchor date/time: when the first event happens
+    dt_start: Optional[datetime] = None   # The anchor date/time: when the first event happens (it would be the semeste start date)
     frequency: str          # The unit of repetition: 'daily', 'weekly', etc.
     interval: int = 1       # How often the frequency repeats (e.g., every 2 weeks)
     
@@ -88,20 +104,10 @@ class RecurrenceSchema(BaseModel):
 class CreateTimeTable(BaseModel):
     course_id: uuid.UUID
     venue_id: uuid.UUID
-    start_time: datetime
-    duration_minutes: int
-    rrule: Union[str, RecurrenceSchema]
-    semester_start_date: date
-    semester_end_date: date
-
-    @field_validator('rrule', mode='before')
-    @classmethod
-    def validate_rrule(cls, v):
-        if isinstance(v, RecurrenceSchema):
-            return v.to_rrule_string()
-        elif isinstance(v, str):
-            return v
-        else:
-            raise ValueError("rrule must be str or RecurrenceSchema")
+    start_time: time #when the time the course starts on the timetable
+    duration_minutes: int #how long the course last
+    rrule: RecurrenceSchema
+    semester_session: str
+    semester_name: Semester_Enum
 
     model_config = ConfigDict(from_attributes=True)

@@ -17,7 +17,7 @@ from .service import AccessTokenBearer, RefreshTokenBearer, auth_service
 auth_router = APIRouter(prefix="/auth")
 
 
-@auth_router.post("/lecturer-register")
+@auth_router.post("/lecturer-register", tags=["Authentication"])
 async def lecturer_register(
     user_data: CreateUser, user_service: UserService = Depends(get_user_service)
 ):
@@ -32,7 +32,7 @@ async def lecturer_register(
     
 
 
-@auth_router.post("/student-register")
+@auth_router.post("/student-register", tags=["Authentication"])
 async def student_register(
     user_data: CreateStudent, user_service: UserService = Depends(get_user_service)
 ):
@@ -46,7 +46,7 @@ async def student_register(
     )
 
 
-@auth_router.post("/login")
+@auth_router.post("/login", tags=["Authentication"])
 async def login(
     user_data: Login, user_service: UserService = Depends(get_user_service)
 ):
@@ -72,7 +72,7 @@ async def login(
     )
 
 
-@auth_router.get("/refresh-token")
+@auth_router.get("/refresh-token", tags=["Authentication"])
 async def get_new_access_token(token_details: dict = Depends(RefreshTokenBearer())):
     # make sure it's not expired
     expiry_timestamp = token_details["exp"]
@@ -87,7 +87,7 @@ async def get_new_access_token(token_details: dict = Depends(RefreshTokenBearer(
         )
 
 
-@auth_router.get("/me")
+@auth_router.get("/me", tags=["Authentication"])
 async def current_user(
     user=Depends(get_current_user)):
     validated_data = UserResponse.model_validate(user).model_dump()
@@ -98,7 +98,7 @@ async def current_user(
     )
 
 
-@auth_router.get("/logout")
+@auth_router.get("/logout", tags=["Authentication"])
 async def revoke_token(token_details: dict = Depends(AccessTokenBearer())):
     jti = token_details["jti"]
     await set_cache(key=str(jti), data="")

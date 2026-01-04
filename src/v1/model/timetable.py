@@ -1,9 +1,10 @@
 import uuid
-from datetime import date, datetime
+from datetime import date, datetime, time
 from enum import StrEnum
 
 from sqlalchemy import Boolean, ForeignKey, Integer, String
 from sqlalchemy import Date as SqlDate
+from sqlalchemy import Time as SqlTime
 from sqlalchemy import DateTime as SQLdatetime
 from sqlalchemy import Enum as SqlEnum
 from sqlalchemy.orm import Mapped, backref, mapped_column, relationship
@@ -41,11 +42,12 @@ class Venue(BaseModel):
 
 
 class Semester(BaseModel):
-    role: Mapped[Semester_Enum] = mapped_column(
+    name: Mapped[Semester_Enum] = mapped_column(
         SqlEnum(Semester_Enum, name="semester_enum"), nullable=False
     )
-    start_date: Mapped[date] = mapped_column(SqlDate)
-    end_date: Mapped[date] = mapped_column(SqlDate)
+    school_session: Mapped[str] = mapped_column(String, nullable=False, unique=True, index=True)
+    start_date: Mapped[date] = mapped_column(SqlDate, nullable=False)
+    end_date: Mapped[date] = mapped_column(SqlDate, nullable=False)
 
 
 class TimeTable(BaseModel):
@@ -56,8 +58,8 @@ class TimeTable(BaseModel):
     semester_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("semesters.id"), nullable=False
     )
-    start_time: Mapped[datetime] = mapped_column(
-        SQLdatetime(timezone=True), nullable=False
+    start_time: Mapped[time] = mapped_column(
+        SqlTime, nullable=False
     )  # when the class is starting
     duration_minutes: Mapped[int] = mapped_column(
         Integer, nullable=False
@@ -65,10 +67,10 @@ class TimeTable(BaseModel):
     rrule: Mapped[str] = mapped_column(String, nullable=False)
 
     # relationships
-    course: Mapped["Course"] = relationship("Course", backref=backref("timetables"))
-    venue: Mapped["Venue"] = relationship("Venue", backref=backref("timetables"))
+    course: Mapped["Course"] = relationship("Course", backref=backref("timetables"), lazy="joined")
+    venue: Mapped["Venue"] = relationship("Venue", backref=backref("timetables"), lazy="joined")
     semester: Mapped["Semester"] = relationship(
-        "Semester", backref=backref("timetables")
+        "Semester", backref=backref("timetables"), lazy="joined"
     )
 
 
@@ -85,8 +87,8 @@ class TimeTableException(BaseModel):
 
     # relationships
     timetable: Mapped["TimeTable"] = relationship(
-        "TimeTable", backref=backref("schedule_exception")
+        "TimeTable", backref=backref("schedule_exception"), lazy="joined"
     )
     venue: Mapped["Venue"] = relationship(
-        "Venue", backref=backref("schedule_exception")
+        "Venue", backref=backref("schedule_exception"), lazy="joined"
     )
