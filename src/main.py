@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from src.util.config import Settings 
 from src.util.exception import register_error_handlers
 from src.v1.controllers.user import user_router
-from src.v1.controllers.courses import courses_router
+from src.v1.controllers.school import courses_router
 from src.v1.controllers.level import level_router
 from src.v1.auth.routes import auth_router
 from src.v1.admin.routes import admin_router

@@ -62,7 +62,7 @@ class RecurrenceSchema(BaseModel):
     by_month_day: Optional[List[int]] = None # Day of month (e.g., 15 for the 15th)
 
     @field_validator('frequency')
-    def validate_frequency(cls, v):
+    def validate_frequency(cls, v:str):
         """Ensures the frontend sends a frequency we actually support."""
         if v.lower() not in FREQ_MAP:
             raise ValueError("Frequency must be daily, weekly, monthly, or yearly")
@@ -106,8 +106,22 @@ class CreateTimeTable(BaseModel):
     venue_id: uuid.UUID
     start_time: time #when the time the course starts on the timetable
     duration_minutes: int #how long the course last
-    rrule: RecurrenceSchema
+    rrule_str: RecurrenceSchema
     semester_session: str
     semester_name: Semester_Enum
+
+    model_config = ConfigDict(from_attributes=True)
+
+class TimeTableResponse(BaseModel):
+    id: uuid.UUID
+    course_id: uuid.UUID
+    venue_id: uuid.UUID
+    semester_id: uuid.UUID
+    start_time: time
+    duration_minutes: int
+    rrule: str
+    created_at: datetime
+    updated_at: datetime
+    deleted_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)

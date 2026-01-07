@@ -4,7 +4,7 @@ from fastapi import Depends, APIRouter, status
 from src.v1.auth.authorization import RoleCheck
 from src.v1.model.user import Role_Enum
 from src.v1.schema.user import UserResponse
-from .schema import Admin, CreateVenue, CreateTimeTable, CreateSemester, CreateDepartment
+from .schema import Admin, CreateVenue, CreateTimeTable, CreateSemester, CreateDepartment, TimeTableResponse
 from src.v1.controllers.util import get_admin_service, get_current_user
 from .service import AdminService
 from src.util.response import success_response
@@ -128,6 +128,7 @@ role=Depends(RoleCheck([Role_Enum.ADMIN]))
         message="Semester deleted successfully"
     )
 
+
 #timetable endpoints
 @admin_router.post("/timetable", tags=["Timetables"])
 async def create_timetable(data: CreateTimeTable, admin_service:AdminService = Depends(get_admin_service),
@@ -137,7 +138,7 @@ role=Depends(RoleCheck([Role_Enum.ADMIN]))
     new_timetable = await admin_service.create_timetable(data)
     return success_response(
         status_code=status.HTTP_201_CREATED,
-        data = CreateTimeTable.model_validate(new_timetable).model_dump()
+        data = TimeTableResponse.model_validate(new_timetable).model_dump()
     )
     
 @admin_router.get("/timetable", tags=["Timetables"])
@@ -148,7 +149,7 @@ role=Depends(RoleCheck([Role_Enum.ADMIN, Role_Enum.LECTURER]))
     timetables = await admin_service.fetch_all_timetables()
     return success_response(
         status_code=status.HTTP_200_OK,
-        data = [CreateTimeTable.model_validate(timetable, from_attributes=True).model_dump() for timetable in timetables]
+        data = [TimeTableResponse.model_validate(timetable).model_dump() for timetable in timetables]
     )
 
 @admin_router.get("/timetable/{timetable_id}", tags=["Timetables"])
@@ -160,7 +161,7 @@ role=Depends(RoleCheck([Role_Enum.ADMIN, Role_Enum.LECTURER]))
     timetable = await admin_service.fetch_timetable_by_id(timetable_id)
     return success_response(
         status_code=status.HTTP_200_OK,
-        data = CreateTimeTable.model_validate(timetable, from_attributes=True).model_dump()
+        data = TimeTableResponse.model_validate(timetable).model_dump()
     )
 
 @admin_router.put("/timetable/{timetable_id}", tags=["Timetables"])
@@ -171,7 +172,7 @@ role=Depends(RoleCheck([Role_Enum.ADMIN]))
     updated_timetable = await admin_service.update_timetable(timetable_id, data)
     return success_response(
         status_code=status.HTTP_200_OK,
-        data = CreateTimeTable.model_validate(updated_timetable, from_attributes=True).model_dump()
+        data = TimeTableResponse.model_validate(updated_timetable).model_dump()
     )
 
 @admin_router.delete("/timetable/{timetable_id}", tags=["Timetables"])
@@ -185,6 +186,8 @@ role=Depends(RoleCheck([Role_Enum.ADMIN]))
         message="Timetable deleted successfully"
     )
 
+
+#fetch all the timetable schedule for a department, course, semester, level
 @admin_router.post("/register", tags=["Admin"])
 async def admin_register(
     user_data: Admin, user_service: AdminService = Depends(get_admin_service)

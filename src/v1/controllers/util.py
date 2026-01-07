@@ -7,6 +7,8 @@ from src.v1.auth.service import AccessTokenBearer
 from src.v1.service.courses import CourseService, DeptService
 from src.v1.service.level_service import LevelService
 from src.v1.service.user import UserService
+from src.v1.service.student_service import StudentService
+from src.v1.service.lecturer_service import LecturerService
 from src.v1.admin.service import AdminService
 
 async def get_course_service(db: AsyncSession = Depends(get_session)):
@@ -23,6 +25,14 @@ async def get_dept_service(db: AsyncSession = Depends(get_session)):
 
 async def get_user_service(db: AsyncSession = Depends(get_session)):
     return UserService(db=db)
+
+async def get_student_service(db: AsyncSession = Depends(get_session)):
+    return StudentService(db=db)
+
+async def get_lecturer_service(db: AsyncSession = Depends(get_session),
+                              course_service: CourseService = Depends(get_course_service),
+                              user_service: UserService = Depends(get_user_service)):
+    return LecturerService(db=db, course_service=course_service, user_service=user_service)
 
 def get_access_token():
     access_token_bearer = AccessTokenBearer()
