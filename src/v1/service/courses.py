@@ -397,48 +397,48 @@ class CourseService:
         #     logger.error(f"An unexpected error occurred while fetching students for course {data.course_id}: {e}")
         #     raise ServerError()
 
-    async def fetch_all_lecturers_taking_course(self, data: UserCourse):
+    async def fetch_all_lecturers_taking_course(self, course_id: uuid.UUID):
+        """Fetch all lecturers assigned to a specific course."""
         try:
-            logger.info(f"Fetching course with ID {data.course_id}.")
-            stmt = await self.db.execute(
-                select(Course)
-                .options(
-                    # selectinload(Course.user),
-                    selectinload(Course.level),
-                    selectinload(Course.department),
-                )
-                .where(Course.id == data.course_id)
-            )
-            course = stmt.scalar_one_or_none()
+            logger.info(f"Fetching lecturers for course with ID {course_id}.")
+
+            # First verify the course exists
+            course = await self.check_if_course_exists_by_id(course_id)
             if not course:
-                raise NotFoundError(f"{data.course_id} does not exist")
-            logger.info(
-                f"Course '{course.name}' found with ID {data.course_id} for department {course.department.name}."
-            )
-            logger.info(f"Fetching all lecturer for level {course.level.name}.")
+                raise NotFoundError(f"Course with ID {course_id} does not exist")
+
+            logger.info(f"Course '{course.name}' ({course.code}) found. Fetching assigned lecturers.")
+
+            # Query lecturers who are assigned to this specific course
             stmt = await self.db.execute(
-                select(User).join(
-                    User.courses
-                )
+                select(User)
+                .join(User.courses)  # Join through the many-to-many relationship
                 .options(
-                selectinload(User.level),
-                selectinload(User.department))
-                .where(User.role == Role_Enum.LECTURER)
+                    selectinload(User.level),
+                    selectinload(User.department)
+                )
+                .where(
+                    User.role == Role_Enum.LECTURER,
+                    Course.id == course_id  # Filter by the specific course
+                )
             )
-            students = stmt.scalars().all()
+            lecturers = stmt.scalars().all()
+
             logger.info(
-                f"Successfully fetched {len(students)} students for course {course.name}."
+                f"Successfully fetched {len(lecturers)} lecturers for course '{course.name}'."
             )
-            return students
+            return lecturers
         except SQLAlchemyError as e:
             logger.error(
-                f"Database error while fetching students for course {data.course_id}: {e}",
+                f"Database error while fetching lecturers for course {course_id}: {e}",
                 exc_info=True,
             )
             raise ServerError()
-        # except Exception as e:
-        #     logger.error(f"An unexpected error occurred while fetching students for course {data.course_id}: {e}")
-        #     raise ServerError()
+        except Exception as e:
+            logger.error(
+                f"An unexpected error occurred while fetching lecturers for course {course_id}: {e}"
+            )
+            raise ServerError()
 
     # return dept
     # return courses for a dept

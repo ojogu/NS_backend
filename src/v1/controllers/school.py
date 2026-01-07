@@ -21,14 +21,6 @@ from .util import get_course_service, get_current_user, get_dept_service, get_le
 
 logger = setup_logger(__name__, "courses_route.log")
 
-# def get_course_service(db: AsyncSession = Depends(get_session)):
-#     return CourseService(db=db)
-
-# def get_level_service(db: AsyncSession = Depends(get_session)):
-#     return LevelService(db=db)
-
-# def get_dept_service(db: AsyncSession = Depends(get_session)):
-#     return DeptService(db=db)
 
 courses_router = APIRouter()
 
@@ -105,11 +97,10 @@ async def fetch_all_student_taking_course(
     # request: Request,
     course_id: uuid.UUID,
     course_service: CourseService = Depends(get_course_service),
-    token_details: dict = Depends(AccessTokenBearer()),
+    user=Depends(get_current_user),
 ):
-    user_id = token_details["user"]["user_id"]
     validated_data = UserCourse.model_validate(
-        {"user_id": user_id, "course_id": course_id}
+        {"user_id": user.id, "course_id": course_id}
     )
     logger.debug(f"request body: {validated_data.course_id}, {validated_data.user_id}")
     students = await course_service.fetch_all_student_taking_course(validated_data)
@@ -124,22 +115,15 @@ async def fetch_all_student_taking_course(
 
 @courses_router.get("/course/lecturers/{course_id}")
 async def fetch_all_lecturers_taking_course(
-    # request: Request,
     course_id: uuid.UUID,
     course_service: CourseService = Depends(get_course_service),
-    token_details: dict = Depends(AccessTokenBearer()),
+    user=Depends(get_current_user),
 ):
-    user_id = token_details["user"]["user_id"]
-    validated_data = UserCourse.model_validate(
-        {"user_id": user_id, "course_id": course_id}
-    )
-    logger.debug(f"request body: {validated_data.course_id}, {validated_data.user_id}")
-    lecturers = await course_service.fetch_all_lecturers_taking_course(validated_data)
+    logger.debug(f"Fetching lecturers for course: {course_id}")
+    lecturers = await course_service.fetch_all_lecturers_taking_course(course_id)
     user_list = []
     for lecturer in lecturers:
-        # logger.info(f"loop: {level}")
         user_value = UserResponse.model_validate(lecturer).model_dump(exclude="password")
-        # logger.info(level_value)
         user_list.append(user_value)
     return success_response(status_code=status.HTTP_200_OK, data=user_list)
 

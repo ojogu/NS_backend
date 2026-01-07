@@ -5,6 +5,7 @@ from src.util.log import setup_logger
 from src.util.response import success_response
 from src.v1.auth.service import AccessTokenBearer
 from src.v1.schema.user import UserCourse, UserResponse, CreateUser, CreateStudent
+from src.v1.schema.courses import CourseResponse
 from src.v1.service.user import UserService
 from src.v1.service.student_service import StudentService
 from src.v1.service.lecturer_service import LecturerService
@@ -46,9 +47,29 @@ async def fetch_lecturer_timetable(
     timetables = await lecturer_service.fetch_lecturer_timetable(str(current_user.id))
     timetable_list = []
     for timetable in timetables:
-        timetable_value = LecturerTimeTableResponse.model_validate(timetable).model_dump()
+        timetable_value = LecturerTimeTableResponse.model_validate(timetable).model_dump(  exclude={
+                "level": {"created_at", "updated_at"},
+                "department": {"created_at", "updated_at"},
+            })
         timetable_list.append(timetable_value)
     return success_response(status_code=status.HTTP_200_OK, data=timetable_list)
+
+
+@user_router.get("/lecturers/courses", tags=["Lecturers"])
+async def fetch_lecturer_courses(
+    lecturer_service: LecturerService = Depends(get_lecturer_service),
+    current_user=Depends(get_current_user),
+    role=Depends(RoleCheck([Role_Enum.LECTURER]))
+):
+    courses = await lecturer_service.fetch_lecturer_courses(str(current_user.id))
+    course_list = []
+    for course in courses:
+        course_value = CourseResponse.model_validate(course).model_dump( exclude={
+                "level": {"created_at", "updated_at"},
+                "department": {"created_at", "updated_at"},
+            })
+        course_list.append(course_value)
+    return success_response(status_code=status.HTTP_200_OK, data=course_list)
 
 
 @user_router.get("/lecturers", tags=["Lecturers"])

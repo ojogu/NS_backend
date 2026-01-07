@@ -51,14 +51,14 @@ class StudentTimeTableResponse(BaseModel):
 
 
 class LecturerTimeTableResponse(BaseModel):
-    id: uuid.UUID
-    course: CourseResponse
-    venue: VenueResponse
-    semester: SemesterResponse
+    course_code: str
+    course_name: str
+    venue_name: str
     start_time: time
     duration_minutes: int
-    rrule: str
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
+    semester_name: Semester_Enum
+    school_session: str
+    schedule_count: int  # Total number of scheduled classes
+    schedule: List[ClassSchedule]  # Next few class occurrences
 
     model_config = ConfigDict(from_attributes=True)
