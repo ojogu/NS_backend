@@ -75,20 +75,35 @@ class TimeTable(BaseModel):
 
 
 class TimeTableException(BaseModel):
+
+    orginal_date: Mapped[datetime] = mapped_column(
+        SQLdatetime(timezone=True), nullable=False
+    )# When it was supposed to happen
+    new_date: Mapped[datetime] = mapped_column(
+        SQLdatetime(timezone=True), nullable=False
+    ) # New time (null if cancelled)
+    
+    is_cancelled: Mapped[bool] = mapped_column(Boolean)
+    is_reschedule: Mapped[bool] = mapped_column(Boolean)
+    reason: Mapped[str] = mapped_column(String)
+    
+    
     schedule_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("time_tables.id"), nullable=False
     )
-    exception_date: Mapped[datetime] = mapped_column(
-        SQLdatetime(timezone=True), nullable=False
-    )
-    is_cancelled: Mapped[bool] = mapped_column(Boolean)
-    is_reschedule: Mapped[bool] = mapped_column(Boolean)
     new_venue_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("venues.id"))
-
+    
+    created_by: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id")) #the user who performs this(admin or lecturer)
+    
+   
     # relationships
     timetable: Mapped["TimeTable"] = relationship(
         "TimeTable", backref=backref("schedule_exception"), lazy="joined"
     )
     venue: Mapped["Venue"] = relationship(
         "Venue", backref=backref("schedule_exception"), lazy="joined"
+    )
+    
+    user: Mapped["Venue"] = relationship(
+        "User", backref=backref("schedule_exception"), lazy="joined"
     )

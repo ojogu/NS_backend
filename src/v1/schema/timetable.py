@@ -62,3 +62,10 @@ class LecturerTimeTableResponse(BaseModel):
     schedule: List[ClassSchedule]  # Next few class occurrences
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class TimetableReschedule(BaseModel):
+    venue_id: uuid.UUID
+    course_id: uuid.UUID
+    start_time: time
+    duration_minutes: int

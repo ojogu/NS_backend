@@ -169,7 +169,7 @@ class LecturerService:
             )
             raise ServerError()
 
-    async def fetch_lecturer_courses(self, lecturer_id: str):
+    async def fetch_lecturer_courses(self, lecturer_id: str)-> List:
         """Fetch all courses assigned to a specific lecturer."""
         try:
             # Get the lecturer and their courses

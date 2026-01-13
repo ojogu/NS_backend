@@ -10,6 +10,9 @@ from src.v1.service.user import UserService
 from src.v1.service.student_service import StudentService
 from src.v1.service.lecturer_service import LecturerService
 from src.v1.admin.service import AdminService
+from src.v1.service.venue_service import VenueService
+from src.v1.service.semester_service import SemesterService
+from src.v1.service.timetable_service import TimeTableService
 
 async def get_course_service(db: AsyncSession = Depends(get_session)):
     return CourseService(db=db)
@@ -19,6 +22,18 @@ async def get_level_service(db: AsyncSession = Depends(get_session)):
 
 async def get_admin_service(db: AsyncSession = Depends(get_session)):
     return AdminService(db=db)
+
+async def get_venue_service(db: AsyncSession = Depends(get_session)):
+    return VenueService(db=db)
+
+async def get_semester_service(db: AsyncSession = Depends(get_session)):
+    return SemesterService(db=db)
+
+async def get_timetable_service(db: AsyncSession = Depends(get_session),
+                               venue_service: VenueService = Depends(get_venue_service),
+                               course_service: CourseService = Depends(get_course_service),
+                               semester_service: SemesterService = Depends(get_semester_service)):
+    return TimeTableService(db=db, venue_service=venue_service, course_service=course_service, semester_service=semester_service)
 
 async def get_dept_service(db: AsyncSession = Depends(get_session)):
     return DeptService(db=db)

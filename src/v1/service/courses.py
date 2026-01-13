@@ -440,6 +440,14 @@ class CourseService:
             )
             raise ServerError()
 
-    # return dept
-    # return courses for a dept
-    # return level
+    #TODO: handle rescheduling and cancelling
+    async def timetable_reshedule(self, schedule_id: uuid.UUID, reschedule_data):
+        pass 
+    
+    async def timetable_cancelling(self):
+        pass 
+        
+        
+    
+    #TODO: set up notification and reminder
+    
